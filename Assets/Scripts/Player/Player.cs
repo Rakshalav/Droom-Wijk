@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-public class PlayerController_Physics : MonoBehaviour
+public class Player : MonoBehaviour
 {
     private CharacterController controller;
     private Vector3 velocity;
@@ -9,21 +9,37 @@ public class PlayerController_Physics : MonoBehaviour
     [Header("Movement")]
     public float walkSpeed = 5f;
     public float sprintSpeed = 10f;
-    public float gravity = -15f; 
+    public float gravity = -15f;
     public float jumpHeight = 2f;
 
     [Header("Camera")]
+    public Camera mainCamera;
     public float mouseSensitivity = 0.3f;
     public Transform cameraTransform;
     private float pitch = 0f;
 
-    private void Start()
+    [Header("Camera zoom effects")]
+    public float normalFOV = 90f;
+    public float defaultZoomedFOV = 30f; 
+    public float minZoomFOV = 10f;  
+    public float maxZoomFOV = 60f; 
+    public float zoomStep = 5f;    
+    public float lerpSpeed = 10f;
+
+    private float currentAdjustedZoomFOV;
+
+    void Start()
     {
         controller = GetComponent<CharacterController>();
         LockCursor();
+        if (mainCamera != null)
+        {
+            mainCamera.fieldOfView = normalFOV;
+            currentAdjustedZoomFOV = defaultZoomedFOV; 
+        }
     }
 
-    private void Update()
+    void Update()
     {
         HandleCursorLockToggle();
 
@@ -31,6 +47,7 @@ public class PlayerController_Physics : MonoBehaviour
         {
             HandleMovementAndGravity();
             HandleMouseLook();
+            CameraZoom();
         }
     }
 
@@ -73,8 +90,8 @@ public class PlayerController_Physics : MonoBehaviour
 
         transform.Rotate(Vector3.up, mouseX, Space.World);
 
-        pitch -= mouseY; 
-        pitch = Mathf.Clamp(pitch, -85f, 85f);
+        pitch -= mouseY;
+        pitch = Mathf.Clamp(pitch, -89f, 89f);
         cameraTransform.localEulerAngles = new Vector3(pitch, 0f, 0f);
     }
 
@@ -93,15 +110,32 @@ public class PlayerController_Physics : MonoBehaviour
         }
     }
 
-    private void LockCursor()
+    public void LockCursor()
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
 
-    private void UnlockCursor()
+    public void UnlockCursor()
     {
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+    }
+
+
+    private void CameraZoom()
+    {
+        if (Input.GetKey(KeyCode.Z))
+        {
+            float scroll = Input.GetAxis("Mouse ScrollWheel");
+            if (scroll != 0f)
+            {
+                currentAdjustedZoomFOV -= scroll * zoomStep;
+                currentAdjustedZoomFOV = Mathf.Clamp(currentAdjustedZoomFOV, minZoomFOV, maxZoomFOV);
+            }
+        }
+
+        float targetFOV = Input.GetKey(KeyCode.Z) ? currentAdjustedZoomFOV : normalFOV;
+        mainCamera.fieldOfView = Mathf.Lerp(mainCamera.fieldOfView, targetFOV, lerpSpeed * Time.deltaTime);
     }
 }
