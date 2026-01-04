@@ -1,13 +1,11 @@
 ﻿using UnityEngine;
-using UnityEngine.UI; // Required for accessing the Image components
+using UnityEngine.UI;
 
 public class MiniMap_Camera : MonoBehaviour
 {
-    // === LINK THESE IN THE INSPECTOR ===
     [Header("Minimap References")]
     public Camera minimapCamera;
     public RawImage minimapUI;
-    public Image playerDotUI;
     private bool isMinimapVisible = true;
 
     void Start()
@@ -17,7 +15,7 @@ public class MiniMap_Camera : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.M))
+        if (Input.GetKeyDown(KeyCode.I))
         {
             isMinimapVisible = !isMinimapVisible;
             SetMinimapVisibility(isMinimapVisible);
@@ -34,11 +32,6 @@ public class MiniMap_Camera : MonoBehaviour
         if (minimapUI != null)
         {
             minimapUI.gameObject.SetActive(isVisible);
-        }
-
-        if (playerDotUI != null)
-        {
-            playerDotUI.gameObject.SetActive(isVisible);
         }
     }
 }
