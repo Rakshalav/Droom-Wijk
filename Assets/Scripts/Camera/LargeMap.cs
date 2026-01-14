@@ -1,52 +1,34 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
 
-public class Largemap : MonoBehaviour
+public partial class MapController : MonoBehaviour
 {
-    [Header("Largemap References")]
-    public Camera largeMapCamera;
-    public RawImage largeMapUI;
-    public RawImage minimapUI; // Assuming this should always be visible unless the large map is up
-    private bool isLargemapVisible = false;
+    [Header("Settings")]
+    public GameObject mapCamera; // Assign your Orthographic Camera here
+    public KeyCode mapKey = KeyCode.L;
 
-    private void Start()
+    private bool isMapOpen = false;
+
+    void Start()
     {
-        // Set initial state (minimap visible, large map hidden)
-        SetLargeMapVisibility(isLargemapVisible);
+        // Ensure the map is closed when the game starts
+        if (mapCamera != null)
+            mapCamera.SetActive(false);
     }
 
-    private void Update()
+    void Update()
     {
-        // This input check only runs once when 'M' is pressed down
-        if (Input.GetKeyDown(KeyCode.M))
+        if (Input.GetKeyDown(mapKey))
         {
-            // Flip the boolean state
-            isLargemapVisible = !isLargemapVisible;
-
-            // Apply the new state
-            SetLargeMapVisibility(isLargemapVisible);
+            ToggleMap();
         }
-
-        // Remove the 'else' block from Update()
-        // The visibility should not change every single frame unless M is pressed.
     }
 
-    private void SetLargeMapVisibility(bool isVisible)
+    void ToggleMap()
     {
-        if (largeMapCamera != null)
-        {
-            largeMapCamera.enabled = isVisible;
-        }
+        isMapOpen = !isMapOpen;
+        mapCamera.SetActive(isMapOpen);
 
-        if (largeMapUI != null)
-        {
-            largeMapUI.gameObject.SetActive(isVisible);
-        }
-
-        if (minimapUI != null)
-        {
-            // Set the minimap to be the opposite of the large map's visibility
-            minimapUI.gameObject.SetActive(!isVisible);
-        }
+        // Optional: Pause time when map is open
+        // Time.timeScale = isMapOpen ? 0f : 1f;
     }
 }
