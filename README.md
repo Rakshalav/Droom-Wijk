@@ -36,6 +36,10 @@ Volg deze stappen om het project in Unity te openen en te configureren:
 3. **Project openen:** Start het project via de Unity Editor.
 4. **Pakketten instellen (Package Setup):** Als er een melding verschijnt over ontbrekende pakketten, zorg er dan voor dat de pakketten "Splines" is geïnstalleerd via de Package Manager.
 
+#### Special Danke
+
+Een speciale dank aan **mevrouw Demi van Hooff**, een **expert Stedenbouwkundig Ontwerper bij SAB Adviseurs**. Zonder haar hulp en professionele advies had ik dit project nooit kunnen afmaken. Haar kennis van stedenbouw was onmisbaar om deze wijk zo goed mogelijk na te maken
+
 ---
 
 ## English
@@ -71,6 +75,9 @@ Follow these steps to open and configure the project in Unity:
 2. **Add to Unity Hub:** Open Unity Hub, click "Add," and select the project folder.
 3. **Open Project:** Launch the project through the Unity Editor.
 4. **Package Setup:** If prompted about missing packages, ensure the "Splines" package is installed via the Package Manager.
+
+#### Special Thanks
+I would like to extend a special thanks to **Ms Demi van Hooff**, expert **Urban Designer at SAB Adviseurs**. Without her professional guidance and insights, I would never have been able to complete this project. Her expertise in urban design was essential in making this neighborhood representation possible.
 
 ---
 ## Afbeeldingen / Images
