@@ -2,6 +2,10 @@
 using UnityEngine;
 using UnityEngine.Splines;
 using Unity.Mathematics;
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.SceneManagement;
+#endif
 
 [ExecuteInEditMode]
 public class SplineRoadManager : MonoBehaviour
@@ -11,13 +15,12 @@ public class SplineRoadManager : MonoBehaviour
     public float resolution = 0.5f;
 
     [Header("Pole Settings")]
-    public GameObject m_polePrefab; // Drop your Pole mesh/prefab here
-    public float m_poleInterval = 10f; // Distance in meters (10, 15, etc.)
+    public GameObject m_polePrefab;
+    public float m_poleInterval = 10f;
     public bool m_placeOnBothSides = true;
 
     public List<InterSection> intersections = new List<InterSection>();
     private MeshFilter meshFilter;
-    private GameObject m_poleContainer; // Keeps the hierarchy clean
 
     private bool m_needsPoles = false;
 
@@ -28,7 +31,7 @@ public class SplineRoadManager : MonoBehaviour
 
     private void Update()
     {
-        if (m_needsPoles)
+        if (m_needsPoles && !Application.isPlaying)
         {
             var splineContainer = GetComponent<SplineContainer>();
             if (splineContainer != null) PlacePoles(splineContainer);
@@ -44,81 +47,66 @@ public class SplineRoadManager : MonoBehaviour
 
     public void Rebuild()
     {
+        if (Application.isPlaying) return;
+
         var splineContainer = GetComponent<SplineContainer>();
         meshFilter = GetComponent<MeshFilter>();
         if (splineContainer == null || meshFilter == null) return;
 
-        // 1. Build the Road Mesh
         BuildRoadAndJunctions(splineContainer);
-
-        // 2. Set flag to spawn poles safely in Update
         m_needsPoles = true;
     }
 
     private void PlacePoles(SplineContainer container)
     {
-        // 1. Clear everything before doing anything else
         ClearOldPoles();
-
         if (m_polePrefab == null || m_poleInterval <= 0.1f) return;
 
-        // 2. Create the container and hide it from the Undo system
-        m_poleContainer = new GameObject("Poles_Container");
-        m_poleContainer.transform.SetParent(transform, false);
-
-        // This stops the container from being saved into the scene file 
-        // and causing "double spawning" when you reload the project.
-        m_poleContainer.gameObject.hideFlags = HideFlags.DontSave;
+        GameObject poleContainer = new GameObject("Poles_Container");
+        poleContainer.transform.SetParent(transform, false);
 
         foreach (var spline in container.Splines)
         {
             float length = spline.GetLength();
-            if (length < m_poleInterval) continue;
-
             int poleCount = Mathf.FloorToInt(length / m_poleInterval);
 
             for (int i = 0; i <= poleCount; i++)
             {
-                float distance = i * m_poleInterval;
-                float t = distance / length;
-
+                float t = (i * m_poleInterval) / length;
                 SampleSplineWidth(spline, t, out Vector3 p1, out Vector3 p2);
 
-                SpawnPole(p1, spline, t);
-                if (m_placeOnBothSides) SpawnPole(p2, spline, t);
+                SpawnObject(m_polePrefab, p1, spline, t, poleContainer.transform);
+                if (m_placeOnBothSides) SpawnObject(m_polePrefab, p2, spline, t, poleContainer.transform);
             }
         }
+
+#if UNITY_EDITOR
+        EditorUtility.SetDirty(this);
+        EditorSceneManager.MarkSceneDirty(gameObject.scene);
+#endif
+    }
+
+    private void SpawnObject(GameObject prefab, Vector3 position, Spline spline, float t, Transform parent)
+    {
+        GameObject obj;
+#if UNITY_EDITOR
+        obj = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+#else
+        obj = Instantiate(prefab, parent);
+#endif
+
+        obj.transform.localPosition = position;
+        spline.Evaluate(t, out float3 pos, out float3 tangent, out float3 up);
+        obj.transform.localRotation = Quaternion.LookRotation((Vector3)tangent, (Vector3)up);
     }
 
     private void ClearOldPoles()
     {
-        // Find ALL objects named Poles_Container under this transform 
-        List<GameObject> toDestroy = new List<GameObject>();
-        for (int i = 0; i < transform.childCount; i++)
+        for (int i = transform.childCount - 1; i >= 0; i--)
         {
-            GameObject child = transform.GetChild(i).gameObject;
-            if (child.name == "Poles_Container")
-            {
-                toDestroy.Add(child);
-            }
+            if (transform.GetChild(i).name == "Poles_Container")
+                DestroyImmediate(transform.GetChild(i).gameObject);
         }
-
-        // Kill them all
-        foreach (GameObject obj in toDestroy)
-        {
-            DestroyImmediate(obj);
-        }
-    }
-
-    private void SpawnPole(Vector3 position, Spline spline, float t)
-    {
-        if (m_poleContainer == null) return;
-        GameObject pole = Instantiate(m_polePrefab, m_poleContainer.transform);
-        pole.transform.localPosition = position;
-
-        // Make the pole face the direction of the road
-        spline.Evaluate(t, out float3 pos, out float3 tangent, out float3 up);
-        pole.transform.localRotation = Quaternion.LookRotation((Vector3)tangent, (Vector3)up);
     }
 
     private void BuildRoadAndJunctions(SplineContainer container)
@@ -132,13 +120,10 @@ public class SplineRoadManager : MonoBehaviour
             float length = spline.GetLength();
             int segments = Mathf.Max(2, Mathf.FloorToInt(length * resolution));
             int vertexStart = allVerts.Count;
-
             for (int i = 0; i <= segments; i++)
             {
                 SampleSplineWidth(spline, (float)i / segments, out Vector3 p1, out Vector3 p2);
-                allVerts.Add(p1);
-                allVerts.Add(p2);
-
+                allVerts.Add(p1); allVerts.Add(p2);
                 if (i < segments)
                 {
                     int root = vertexStart + (i * 2);
@@ -147,9 +132,7 @@ public class SplineRoadManager : MonoBehaviour
                 }
             }
         }
-
         BuildIntersections(allVerts, allTris);
-
         mesh.SetVertices(allVerts);
         mesh.SetTriangles(allTris, 0);
         mesh.RecalculateNormals();
@@ -162,7 +145,6 @@ public class SplineRoadManager : MonoBehaviour
         float3 forward = math.normalize(tangent);
         if (math.all(forward == float3.zero)) forward = new float3(0, 0, 1);
         float3 right = math.normalize(math.cross(up, forward));
-
         p1 = (Vector3)(pos - (right * m_width));
         p2 = (Vector3)(pos + (right * m_width));
     }
@@ -177,13 +159,11 @@ public class SplineRoadManager : MonoBehaviour
             {
                 if (junction.spline == null) continue;
                 SampleSplineWidth(junction.spline, junction.knotIndex == 0 ? 0 : 1, out Vector3 p1, out Vector3 p2);
-                points.Add(p1); points.Add(p2);
-                center += p1 + p2;
+                points.Add(p1); points.Add(p2); center += p1 + p2;
             }
             if (points.Count == 0) continue;
             center /= points.Count;
             points.Sort((x, y) => Vector3.SignedAngle(Vector3.forward, x - center, Vector3.up).CompareTo(Vector3.SignedAngle(Vector3.forward, y - center, Vector3.up)));
-
             int offset = verts.Count;
             for (int j = 1; j <= points.Count; j++)
             {
@@ -206,9 +186,6 @@ public class InterSection
 [System.Serializable]
 public struct JunctionInfo
 {
-    public int splineIndex;
-    public int knotIndex;
-    public Spline spline;
-    public BezierKnot knot;
+    public int splineIndex; public int knotIndex; public Spline spline; public BezierKnot knot;
     public JunctionInfo(int s, int k, Spline sp, BezierKnot kn) { splineIndex = s; knotIndex = k; spline = sp; knot = kn; }
 }
